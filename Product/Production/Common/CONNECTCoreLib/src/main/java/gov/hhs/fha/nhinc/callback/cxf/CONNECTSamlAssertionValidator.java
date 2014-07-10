@@ -51,6 +51,7 @@ import org.apache.ws.security.saml.ext.AssertionWrapper;
 import org.apache.ws.security.saml.ext.OpenSAMLUtil;
 import org.apache.ws.security.validate.Credential;
 import org.apache.ws.security.validate.SamlAssertionValidator;
+import org.opensaml.common.SAMLVersion;
 import org.opensaml.saml2.core.AuthzDecisionStatement;
 import org.opensaml.saml2.core.Issuer;
 import org.opensaml.xml.validation.ValidationException;
@@ -84,6 +85,9 @@ public class CONNECTSamlAssertionValidator extends SamlAssertionValidator {
 	/** The Constant DISABLE_SAML1_ASSERTION . */
 	private static final String DISABLE_SAML1_ASSERTION_PROP = "disableSAML1Assertion";
 
+	/** The Constant VALIDATE_SAML2_VERSION_ATTRIBUTE. */
+	private static final String VALIDATE_SAML2_VERSION_ATTRIBUTE_PROP = "validateSAML2Version";
+
 	/** The Constant VALIDATE_ISSUE_INSTANT. */
 	private static final String VALIDATE_ASSERTION_ISSUE_INSTANT_PROP = "validateAssertionIssueInstant";
 
@@ -116,8 +120,11 @@ public class CONNECTSamlAssertionValidator extends SamlAssertionValidator {
     protected void validateAssertion(AssertionWrapper assertion) throws WSSecurityException {
         if (assertion.getSaml1() != null) {
 			if (isSAML1Disabled()) {
-				LOG.info("SAML version 1 is not supported, return WSSeruciryException.");
+				LOG.debug("SAML version 1 is not supported, return WSSeruciryException.");
 				throw new WSSecurityException("SAML version 1 is not supported.");
+			}
+			else {
+				LOG.debug("SAML version 1 is supported.");
 			}
             ValidatorSuite schemaValidators = org.opensaml.Configuration.getValidatorSuite("saml1-schema-validator");
             ValidatorSuite specValidators = org.opensaml.Configuration.getValidatorSuite("saml1-spec-validator");
@@ -162,6 +169,7 @@ public class CONNECTSamlAssertionValidator extends SamlAssertionValidator {
 
             try {
                 for (ValidatorSuite v : validators) {
+					LOG.debug("validatorSuite, class=" + v.getClass().getName());
                     v.validate(assertion.getSaml2());
                 }
             } catch (ValidationException e) {
@@ -175,11 +183,31 @@ public class CONNECTSamlAssertionValidator extends SamlAssertionValidator {
                 }
             }
 
-			if (isValidateIssueInstant()) {
-				if (((new Date()).getTime() + (1*60*60*1000)) < assertion.getSaml2().getIssueInstant().toDate().getTime
-						()) {
-					throw new WSSecurityException(WSSecurityException.FAILURE, "Invalid IssueInstant");
+			if (isValidateSAML2Version()) {
+				LOG.debug("Validate SAML version");
+				String version = assertion.getXmlObject().getDOM().getAttribute("Version");
+				LOG.debug("SAML version=" + version);
+				if (version == null || version.length() == 0) {
+					LOG.error("SAML2 Version attribute is not available.");
+					throw new WSSecurityException("SAML Version attribute is not available.");
 				}
+				if (assertion.getSaml2().getVersion().getMajorVersion() != SAMLVersion.VERSION_20.getMajorVersion() ||
+						assertion.getSaml2().getVersion().getMinorVersion() != SAMLVersion.VERSION_20.getMinorVersion()) {
+					LOG.error("Invalid SAML2 Version, version=" + assertion.getSaml2().getVersion().toString());
+					throw new WSSecurityException("Invalid SAML Version.");
+				}
+			}
+
+			if (isValidateIssueInstant()) {
+				Date now = new Date();
+				LOG.debug(String.format("IssueInstant is going to be validated. currnet=%1$d, issueInstant=%2$d",
+						now.getTime(), assertion.getSaml2().getIssueInstant().toDate().getTime()));
+				if ((now.getTime() + (1*60*60*1000)) < assertion.getSaml2().getIssueInstant().toDate().getTime()) {
+					throw new WSSecurityException("Invalid IssueInstant");
+				}
+			}
+			else {
+				LOG.debug("IssueInstant is not validated.");
 			}
         }
     }
@@ -282,6 +310,7 @@ public class CONNECTSamlAssertionValidator extends SamlAssertionValidator {
         if (methods != null && methods.size() > 0) {
             confirmMethod = methods.get(0);
         }
+		LOG.debug("confirmMethod: " + confirmMethod);
         if (OpenSAMLUtil.isMethodHolderOfKey(confirmMethod)) {
             if (assertion.getSubjectKeyInfo() == null) {
                 LOG.debug("There is no Subject KeyInfo to match the holder-of-key subject conf method");
@@ -340,6 +369,21 @@ public class CONNECTSamlAssertionValidator extends SamlAssertionValidator {
 
 		} catch (PropertyAccessException e) {
 			LOG.warn("Failed to read a property, " + DISABLE_SAML1_ASSERTION_PROP, e);
+		}
+		return false;
+	}
+
+
+	protected boolean isValidateSAML2Version()  {
+		try {
+			Boolean validate = propertyAccessor.getPropertyBoolean(NhincConstants.GATEWAY_PROPERTY_FILE,
+					VALIDATE_SAML2_VERSION_ATTRIBUTE_PROP);
+			if (validate != null) {
+				return validate.booleanValue();
+			}
+
+		} catch (PropertyAccessException e) {
+			LOG.warn("Failed to read a property, " + VALIDATE_SAML2_VERSION_ATTRIBUTE_PROP, e);
 		}
 		return false;
 	}
