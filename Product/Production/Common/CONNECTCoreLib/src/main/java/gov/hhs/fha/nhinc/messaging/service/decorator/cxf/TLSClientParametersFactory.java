@@ -32,6 +32,7 @@ import gov.hhs.fha.nhinc.callback.openSAML.CertificateManagerImpl;
 
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.security.UnrecoverableKeyException;
 
 import javax.net.ssl.KeyManagerFactory;
@@ -39,6 +40,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
+import gov.hhs.fha.nhinc.cryptostore.StoreUtil;
 import org.apache.cxf.configuration.jsse.TLSClientParameters;
 import org.apache.log4j.Logger;
 
@@ -90,7 +92,11 @@ public class TLSClientParametersFactory {
             context = SSLContext.getDefault();
             SSLSocketFactory factory = context.getSocketFactory();
             if (factory != null) {
-                tlsCP.setSSLSocketFactory(factory);
+                //tlsCP.setSSLSocketFactory(factory);
+                tlsCP.setKeyManagers(keyFactory.getKeyManagers());
+                tlsCP.setTrustManagers(trustFactory.getTrustManagers());
+                tlsCP.setSecureRandom(new SecureRandom());
+                tlsCP.setCertAlias(StoreUtil.getInstance().getPrivateKeyAlias());
             } else {
                 throw new RuntimeException("Couldn't get the SSLSocketFactory.");
             }
