@@ -389,10 +389,10 @@ public class HOKSAMLAssertionBuilder extends SAMLAssertionBuilder {
         List<Assertion> evidenceAssertions = new ArrayList<Assertion>();
         if (evAssertionID == null) {
             evAssertionID = createAssertionId();
-        } else {
-            if (!evAssertionID.startsWith("_")) {
-                evAssertionID = ID_PREFIX.concat(evAssertionID);
-            }
+//        } else {
+//            if (!evAssertionID.startsWith("_")) {
+//                evAssertionID = ID_PREFIX.concat(evAssertionID);
+//            }
         }
 
         if (issueInstant == null) {
