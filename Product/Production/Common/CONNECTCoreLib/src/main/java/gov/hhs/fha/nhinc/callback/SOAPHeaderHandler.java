@@ -40,6 +40,7 @@ import javax.xml.ws.handler.MessageContext;
 import javax.xml.ws.handler.soap.SOAPHandler;
 import javax.xml.ws.handler.soap.SOAPMessageContext;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import gov.hhs.fha.nhinc.async.AddressingHeaderCreator;
@@ -112,6 +113,10 @@ public class SOAPHeaderHandler implements SOAPHandler<SOAPMessageContext> {
             messageId = "urn:" + messageId;
 		} else if (!legalMessageId(messageId)) {
             messageId = "urn:uuid:" + messageId;
+        }
+        //
+        if (StringUtils.startsWith(messageId, "urn:uuid:")) {
+            messageId = StringUtils.substring(messageId, "urn:uuid:".length());
         }
 
         // Steps that need to be performed
