@@ -141,6 +141,12 @@ http://cxf.apache.org/core http://cxf.apache.org/schemas/core.xsd ">
         <jaxws:properties>
             <entry key="mtom-enabled" value="true" />
         </jaxws:properties>
+        <jaxws:outFaultInterceptors>
+            <ref bean="attachmentFaultOutInterceptor"/>
+        </jaxws:outFaultInterceptors>
+        <jaxws:outInterceptors>
+            <ref bean="attachmentFaultOutInterceptor"/>
+        </jaxws:outInterceptors>
     </jaxws:endpoint>
 
 
